@@ -38,25 +38,30 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package com.helger.jcodemodel.tests;
-
-import java.io.IOException;
-
-import org.junit.Test;
+package com.helger.jcodemodel;
 
 import com.helger.jcodemodel.JCodeModel;
+import com.helger.jcodemodel.JDefinedClass;
+import com.helger.jcodemodel.JFieldVar;
+import com.helger.jcodemodel.JMethod;
+import com.helger.jcodemodel.JMod;
 import com.helger.jcodemodel.writer.SingleStreamCodeWriter;
 
 /**
  * @author Kohsuke Kawaguchi
  */
-public class PackageJavadocTest
+public class AnnotationSample
 {
-  @Test
-  public void main () throws IOException
+  public static void main (final String [] args) throws Exception
   {
     final JCodeModel cm = new JCodeModel ();
-    cm._package ("foo").javadoc ().add ("String");
+    final JDefinedClass cls = cm._class ("Test");
+    final JMethod m = cls.method (JMod.PUBLIC, cm.VOID, "foo");
+    m.annotate (Deprecated.class);
+
+    final JFieldVar field = cls.field (JMod.PRIVATE, cm.DOUBLE, "y");
+    field.annotate (Deprecated.class);
+
     cm.build (new SingleStreamCodeWriter (System.out));
   }
 }

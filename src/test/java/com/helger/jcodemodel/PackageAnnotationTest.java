@@ -38,30 +38,26 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package com.helger.jcodemodel.tests;
+package com.helger.jcodemodel;
+
+import java.io.IOException;
+import java.lang.annotation.Inherited;
+
+import org.junit.Test;
 
 import com.helger.jcodemodel.JCodeModel;
-import com.helger.jcodemodel.JDefinedClass;
-import com.helger.jcodemodel.JFieldVar;
-import com.helger.jcodemodel.JMethod;
-import com.helger.jcodemodel.JMod;
 import com.helger.jcodemodel.writer.SingleStreamCodeWriter;
 
 /**
  * @author Kohsuke Kawaguchi
  */
-public class AnnotationSample
+public class PackageAnnotationTest
 {
-  public static void main (final String [] args) throws Exception
+  @Test
+  public void main () throws IOException
   {
     final JCodeModel cm = new JCodeModel ();
-    final JDefinedClass cls = cm._class ("Test");
-    final JMethod m = cls.method (JMod.PUBLIC, cm.VOID, "foo");
-    m.annotate (Deprecated.class);
-
-    final JFieldVar field = cls.field (JMod.PRIVATE, cm.DOUBLE, "y");
-    field.annotate (Deprecated.class);
-
+    cm._package ("foo").annotate (Inherited.class);
     cm.build (new SingleStreamCodeWriter (System.out));
   }
 }

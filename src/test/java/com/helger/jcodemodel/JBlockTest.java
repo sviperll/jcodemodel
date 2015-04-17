@@ -40,61 +40,28 @@
  */
 package com.helger.jcodemodel;
 
-import java.util.List;
+import static org.junit.Assert.assertEquals;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import org.junit.Test;
+
+import com.helger.jcodemodel.tests.util.CodeModelTestsUtils;
 
 /**
- * A special type variable that is used inside {@link JInvocation} objects if
- * the parameter type is an {@link AbstractJClass}
+ * {@link JBlock} tests.
  *
  * @author Philip Helger
  */
-public class JTypeVarClass extends JTypeVar
+public final class JBlockTest
 {
-  private final AbstractJClass m_aClass;
+  private static final String CRLF = System.getProperty ("line.separator");
 
-  protected JTypeVarClass (@Nonnull final AbstractJClass aClass)
+  @Test
+  public void testBasic ()
   {
-    super (aClass.owner (), aClass.name ());
-    m_aClass = aClass;
-  }
-
-  @Override
-  @Nonnull
-  public String name ()
-  {
-    // This method is used for the main printing
-    if (m_aClass instanceof JDefinedClass)
-    {
-      final List <JTypeVar> aTypeParams = ((JDefinedClass) m_aClass).typeParamList ();
-      if (!aTypeParams.isEmpty ())
-      {
-        // We need the type params here!
-        return new JNarrowedClass (m_aClass, aTypeParams).name ();
-      }
-    }
-    return m_aClass.name ();
-  }
-
-  @Override
-  @Nonnull
-  public String fullName ()
-  {
-    // This method is e.g. used for import statements
-    if (m_aClass instanceof JNarrowedClass)
-    {
-      // Avoid the type parameters
-      return ((JNarrowedClass) m_aClass).erasure ().fullName ();
-    }
-    return m_aClass.fullName ();
-  }
-
-  @Override
-  @Nullable
-  public JPackage _package ()
-  {
-    return m_aClass._package ();
+    assertEquals ("{" + CRLF + "}" + CRLF, CodeModelTestsUtils.toString (new JBlock ()));
+    assertEquals ("{" + CRLF + "}" + CRLF, CodeModelTestsUtils.toString (new JBlock (true, true)));
+    assertEquals ("{" + CRLF + "}" + CRLF, CodeModelTestsUtils.toString (new JBlock (true, false)));
+    assertEquals ("", CodeModelTestsUtils.toString (new JBlock (false, true)));
+    assertEquals ("", CodeModelTestsUtils.toString (new JBlock (false, false)));
   }
 }

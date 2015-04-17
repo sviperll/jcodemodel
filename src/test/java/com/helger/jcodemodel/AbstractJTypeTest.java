@@ -38,7 +38,7 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package com.helger.jcodemodel.tests;
+package com.helger.jcodemodel;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -55,11 +55,11 @@ import com.helger.jcodemodel.AbstractJClass;
 import com.helger.jcodemodel.JCodeModel;
 
 /**
- * @author Victor Nazarov <asviraspossible@gmail.com>
+ * @author Victor Nazarov &lt;asviraspossible@gmail.com&gt;
  */
-public class AbstractJTypeTest
+public final class AbstractJTypeTest
 {
-  private static class AssignmentTypes
+  private static final class AssignmentTypes
   {
     private final AbstractJClass _variable;
     private final AbstractJClass _value;

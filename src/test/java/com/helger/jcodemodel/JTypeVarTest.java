@@ -38,54 +38,36 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package com.helger.jcodemodel.tests;
+package com.helger.jcodemodel;
 
-import static org.junit.Assert.assertNotNull;
-import japa.parser.JavaParser;
-import japa.parser.ast.CompilationUnit;
-import japa.parser.ast.body.ClassOrInterfaceDeclaration;
-import japa.parser.ast.body.InitializerDeclaration;
-import japa.parser.ast.body.TypeDeclaration;
+import static org.junit.Assert.assertEquals;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.nio.charset.Charset;
+import java.io.Serializable;
 
 import org.junit.Test;
 
+import com.helger.jcodemodel.JClassAlreadyExistsException;
 import com.helger.jcodemodel.JCodeModel;
 import com.helger.jcodemodel.JDefinedClass;
-import com.helger.jcodemodel.JExpr;
-import com.helger.jcodemodel.JFieldVar;
+import com.helger.jcodemodel.JMethod;
 import com.helger.jcodemodel.JMod;
-import com.helger.jcodemodel.writer.OutputStreamCodeWriter;
+import com.helger.jcodemodel.JTypeVar;
+import com.helger.jcodemodel.tests.util.CodeModelTestsUtils;
 
-public class JDefinedClassInstanceInitTest
+public final class JTypeVarTest
 {
-
   @Test
-  public void generatesInstanceInit () throws Exception
+  public void main () throws JClassAlreadyExistsException
   {
     final JCodeModel cm = new JCodeModel ();
-    final JDefinedClass c = cm._package ("myPackage")._class (0, "MyClass");
-    final JFieldVar myField = c.field (JMod.PRIVATE, String.class, "myField");
-    c.instanceInit ().assign (JExpr._this ().ref (myField), JExpr.lit ("myValue"));
-    final ByteArrayOutputStream bos = new ByteArrayOutputStream ();
-    final Charset encoding = Charset.forName ("UTF-8");
-    // cm.build(new OutputStreamCodeWriter(System.out, encoding));
-    cm.build (new OutputStreamCodeWriter (bos, encoding));
-    bos.close ();
+    final JDefinedClass cls = cm._class ("Test");
+    final JMethod m = cls.method (JMod.PUBLIC, cm.VOID, "foo");
+    final JTypeVar tv = m.generify ("T");
+    tv.bound (cm.parseType ("java.lang.Comparable<T>").boxify ());
+    tv.bound (cm.ref (Serializable.class));
 
-    final ByteArrayInputStream bis = new ByteArrayInputStream (bos.toByteArray ());
-
-    final CompilationUnit compilationUnit = JavaParser.parse (bis, encoding.name ());
-
-    final TypeDeclaration typeDeclaration = compilationUnit.getTypes ().get (0);
-    final ClassOrInterfaceDeclaration classDeclaration = (ClassOrInterfaceDeclaration) typeDeclaration;
-
-    final InitializerDeclaration initializerDeclaration = (InitializerDeclaration) classDeclaration.getMembers ()
-                                                                                                   .get (1);
-
-    assertNotNull (initializerDeclaration);
+    assertEquals ("T extends java.lang.Comparable<T> & java.io.Serializable", CodeModelTestsUtils.toString (tv));
+    assertEquals ("public<T extends java.lang.Comparable<T> & java.io.Serializable> void foo() {\n" + "}\n",
+                  CodeModelTestsUtils.toString (m).replace ("\r", ""));
   }
 }

@@ -38,36 +38,53 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package com.helger.jcodemodel.tests;
+package com.helger.jcodemodel;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.Serializable;
-
+import org.junit.Assert;
 import org.junit.Test;
 
+import com.helger.jcodemodel.JAnnotationUse;
 import com.helger.jcodemodel.JClassAlreadyExistsException;
 import com.helger.jcodemodel.JCodeModel;
 import com.helger.jcodemodel.JDefinedClass;
-import com.helger.jcodemodel.JMethod;
-import com.helger.jcodemodel.JMod;
-import com.helger.jcodemodel.JTypeVar;
 import com.helger.jcodemodel.tests.util.CodeModelTestsUtils;
 
-public final class JTypeVarTest
+/**
+ * Unit test for class {@link JAnnotationUse}.
+ *
+ * @author Philip Helger
+ */
+public class JAnnotationUseTest
 {
   @Test
-  public void main () throws JClassAlreadyExistsException
+  public void generatesGenericParam () throws JClassAlreadyExistsException
   {
-    final JCodeModel cm = new JCodeModel ();
-    final JDefinedClass cls = cm._class ("Test");
-    final JMethod m = cls.method (JMod.PUBLIC, cm.VOID, "foo");
-    final JTypeVar tv = m.generify ("T");
-    tv.bound (cm.parseType ("java.lang.Comparable<T>").boxify ());
-    tv.bound (cm.ref (Serializable.class));
+    final JCodeModel codeModel = new JCodeModel ();
+    final JDefinedClass testClass = codeModel._class ("Test");
+    final JAnnotationUse suppressWarningAnnotation = testClass.annotate (SuppressWarnings.class);
+    suppressWarningAnnotation.param (JAnnotationUse.SPECIAL_KEY_VALUE, "unused");
 
-    assertEquals ("T extends java.lang.Comparable<T> & java.io.Serializable", CodeModelTestsUtils.toString (tv));
-    assertEquals ("public<T extends java.lang.Comparable<T> & java.io.Serializable> void foo() {\n" + "}\n",
-                  CodeModelTestsUtils.toString (m).replace ("\r", ""));
+    Assert.assertEquals ("@java.lang.SuppressWarnings(\"unused\")",
+                         CodeModelTestsUtils.generate (suppressWarningAnnotation));
+
+  }
+
+  @Test
+  public void generatesGenericParam2 () throws JClassAlreadyExistsException
+  {
+    final JCodeModel codeModel = new JCodeModel ();
+    final JDefinedClass testClass = codeModel._class ("Test");
+    final JAnnotationUse suppressWarningAnnotation = testClass.annotate (SuppressWarnings.class);
+    suppressWarningAnnotation.paramArray (JAnnotationUse.SPECIAL_KEY_VALUE, "unused", "deprecation");
+
+    final String sCRLF = System.getProperty ("line.separator");
+    Assert.assertEquals ("@java.lang.SuppressWarnings({" +
+                         sCRLF +
+                         "    \"unused\"," +
+                         sCRLF +
+                         "    \"deprecation\"" +
+                         sCRLF +
+                         "})", CodeModelTestsUtils.generate (suppressWarningAnnotation));
+
   }
 }

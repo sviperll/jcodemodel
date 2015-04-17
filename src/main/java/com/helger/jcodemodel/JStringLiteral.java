@@ -52,22 +52,29 @@ import javax.annotation.Nonnull;
  */
 public class JStringLiteral extends AbstractJExpressionImpl
 {
-  private final String _what;
+  private String m_sWhat;
 
-  protected JStringLiteral (@Nonnull final String what)
+  protected JStringLiteral (@Nonnull final String sWhat)
   {
-    this._what = what;
+    what (sWhat);
   }
 
   @Nonnull
   public String what ()
   {
-    return _what;
+    return m_sWhat;
+  }
+
+  public void what (@Nonnull final String sWhat)
+  {
+    if (sWhat == null)
+      throw new NullPointerException ("String may not be null");
+    m_sWhat = sWhat;
   }
 
   public void generate (@Nonnull final JFormatter f)
   {
-    f.print (JExpr.quotify ('"', _what));
+    f.print (JExpr.quotify ('"', m_sWhat));
   }
 
   @Override
@@ -81,12 +88,12 @@ public class JStringLiteral extends AbstractJExpressionImpl
     if (o == null || getClass () != o.getClass ())
       return false;
     final JStringLiteral rhs = (JStringLiteral) o;
-    return isEqual (_what, rhs._what);
+    return isEqual (m_sWhat, rhs.m_sWhat);
   }
 
   @Override
   public int hashCode ()
   {
-    return getHashCode (this, _what);
+    return getHashCode (this, m_sWhat);
   }
 }

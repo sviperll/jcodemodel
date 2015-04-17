@@ -38,57 +38,28 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package com.helger.jcodemodel.tests;
-
-import java.util.ArrayList;
+package com.helger.jcodemodel;
 
 import org.junit.Test;
 
-import com.helger.jcodemodel.AbstractJClass;
 import com.helger.jcodemodel.JCodeModel;
 import com.helger.jcodemodel.JDefinedClass;
-import com.helger.jcodemodel.JExpr;
-import com.helger.jcodemodel.JFieldRef;
-import com.helger.jcodemodel.JForEach;
-import com.helger.jcodemodel.JMethod;
-import com.helger.jcodemodel.JMod;
-import com.helger.jcodemodel.JVar;
 import com.helger.jcodemodel.writer.SingleStreamCodeWriter;
 
 /**
- * Simple program to test the generation of the enhanced for loop in jdk 1.5
- *
- * @author Bhakti Mehta Bhakti.Mehta@sun.com
+ * @author Kohsuke Kawaguchi
  */
-
-public class ForEachTest
+public class NestedClassTest
 {
-
   @Test
   public void main () throws Exception
   {
-
     final JCodeModel cm = new JCodeModel ();
-    final JDefinedClass cls = cm._class ("Test");
-
-    final JMethod m = cls.method (JMod.PUBLIC, cm.VOID, "foo");
-    m.body ().decl (cm.INT, "getCount");
-
-    // This is not exactly right because we need to
-    // support generics
-    final AbstractJClass arrayListclass = cm.ref (ArrayList.class);
-    final JVar $list = m.body ().decl (arrayListclass, "alist", JExpr._new (arrayListclass));
-
-    final AbstractJClass $integerclass = cm.ref (Integer.class);
-    final JForEach foreach = m.body ().forEach ($integerclass, "count", $list);
-    final JVar $count1 = foreach.var ();
-    foreach.body ().assign (JExpr.ref ("getCount"), JExpr.lit (10));
-
-    // printing out the variable
-    final JFieldRef out1 = cm.ref (System.class).staticRef ("out");
-    // JInvocation invocation =
-    foreach.body ().invoke (out1, "println").arg ($count1);
-
+    final JDefinedClass c = cm._package ("foo")._class (0, "Foo");
+    c._extends (cm.ref (Bar.class));
     cm.build (new SingleStreamCodeWriter (System.out));
   }
+
+  public static class Bar
+  {}
 }

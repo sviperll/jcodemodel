@@ -38,24 +38,54 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package com.helger.jcodemodel.tests;
+package com.helger.jcodemodel;
 
-import static org.junit.Assert.assertNotNull;
-
-import org.junit.Test;
-
-import com.helger.jcodemodel.JCodeModel;
+import javax.annotation.Nonnull;
 
 /**
- * @author Kohsuke Kawaguchi
+ * Synchronized block within a method statement
+ *
+ * @author Philip Helger
+ * @since 2.7.10
  */
-public class JCodeModelTest
+public class JSynchronizedBlock implements IJStatement
 {
-  @Test
-  public void testParseArray () throws Exception
+  private IJExpression m_aExpression;
+  private JBlock m_aBody;
+
+  protected JSynchronizedBlock (@Nonnull final IJExpression aExpression)
   {
-    final JCodeModel cm = new JCodeModel ();
-    assertNotNull (cm.parseType ("java.util.ArrayList<java.lang.String[]>[]"));
-    assertNotNull (cm.parseType ("java.util.ArrayList<java.util.ArrayList<java.util.ArrayList<java.lang.String[]>[]>[]>[]"));
+    expr (aExpression);
+  }
+
+  public void expr (@Nonnull final IJExpression aExpression)
+  {
+    if (aExpression == null)
+      throw new NullPointerException ("expression");
+    m_aExpression = aExpression;
+  }
+
+  @Nonnull
+  public IJExpression expr ()
+  {
+    return m_aExpression;
+  }
+
+  @Nonnull
+  public JBlock body ()
+  {
+    if (m_aBody == null)
+      m_aBody = new JBlock ();
+    return m_aBody;
+  }
+
+  public void state (@Nonnull final JFormatter f)
+  {
+    f.print ("synchronized (").generable (m_aExpression).print (")").newline ();
+    if (m_aBody != null)
+      f.generable (m_aBody);
+    else
+      f.print ("{}");
+    f.newline ();
   }
 }

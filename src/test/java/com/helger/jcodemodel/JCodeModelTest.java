@@ -40,61 +40,22 @@
  */
 package com.helger.jcodemodel;
 
-import java.util.List;
+import static org.junit.Assert.assertNotNull;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import org.junit.Test;
+
+import com.helger.jcodemodel.JCodeModel;
 
 /**
- * A special type variable that is used inside {@link JInvocation} objects if
- * the parameter type is an {@link AbstractJClass}
- *
- * @author Philip Helger
+ * @author Kohsuke Kawaguchi
  */
-public class JTypeVarClass extends JTypeVar
+public class JCodeModelTest
 {
-  private final AbstractJClass m_aClass;
-
-  protected JTypeVarClass (@Nonnull final AbstractJClass aClass)
+  @Test
+  public void testParseArray () throws Exception
   {
-    super (aClass.owner (), aClass.name ());
-    m_aClass = aClass;
-  }
-
-  @Override
-  @Nonnull
-  public String name ()
-  {
-    // This method is used for the main printing
-    if (m_aClass instanceof JDefinedClass)
-    {
-      final List <JTypeVar> aTypeParams = ((JDefinedClass) m_aClass).typeParamList ();
-      if (!aTypeParams.isEmpty ())
-      {
-        // We need the type params here!
-        return new JNarrowedClass (m_aClass, aTypeParams).name ();
-      }
-    }
-    return m_aClass.name ();
-  }
-
-  @Override
-  @Nonnull
-  public String fullName ()
-  {
-    // This method is e.g. used for import statements
-    if (m_aClass instanceof JNarrowedClass)
-    {
-      // Avoid the type parameters
-      return ((JNarrowedClass) m_aClass).erasure ().fullName ();
-    }
-    return m_aClass.fullName ();
-  }
-
-  @Override
-  @Nullable
-  public JPackage _package ()
-  {
-    return m_aClass._package ();
+    final JCodeModel cm = new JCodeModel ();
+    assertNotNull (cm.parseType ("java.util.ArrayList<java.lang.String[]>[]"));
+    assertNotNull (cm.parseType ("java.util.ArrayList<java.util.ArrayList<java.util.ArrayList<java.lang.String[]>[]>[]>[]"));
   }
 }

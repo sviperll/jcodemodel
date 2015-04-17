@@ -55,6 +55,7 @@ import java.util.Set;
 import javax.annotation.Nonnull;
 
 import com.helger.jcodemodel.util.ClassNameComparator;
+import com.helger.jcodemodel.util.NullWriter;
 
 /**
  * This is a utility class for managing indentation and other basic formatting
@@ -62,6 +63,15 @@ import com.helger.jcodemodel.util.ClassNameComparator;
  */
 public class JFormatter implements Closeable
 {
+  public static boolean containsErrorTypes (@Nonnull final JDefinedClass c)
+  {
+    final JFormatter formatter = new JFormatter (NullWriter.getInstance ());
+    formatter.m_eMode = EMode.FIND_ERROR_TYPES;
+    formatter.m_bContainsErrorTypes = false;
+    formatter.declaration (c);
+    return formatter.m_bContainsErrorTypes;
+  }
+
   private static enum EMode
   {
     /**
@@ -72,8 +82,19 @@ public class JFormatter implements Closeable
     /**
      * Print the actual source code.
      */
-    PRINTING
+    PRINTING,
+
+    /**
+     * Find any error types in output code. In this mode we don't actually
+     * generate anything.
+     * <p>
+     * Only used by {@link JFormatter#containsErrorTypes(JDefinedClass)
+     * containsErrorTypes} method
+     */
+    FIND_ERROR_TYPES
   }
+
+  public static final String DEFAULT_INDENT_SPACE = "    ";
 
   /**
    * Special character token we use to differentiate '>' as an operator and '>'
@@ -88,51 +109,64 @@ public class JFormatter implements Closeable
    * map from short type name to ReferenceList (list of JClass and ids sharing
    * that name)
    **/
-  private final Map <String, Usages> _collectedReferences = new HashMap <String, Usages> ();
+  private final Map <String, Usages> m_aCollectedReferences = new HashMap <String, Usages> ();
 
   /**
    * set of imported types (including package java types, even though we won't
    * generate imports for them)
    */
-  private final Set <AbstractJClass> _importedClasses = new HashSet <AbstractJClass> ();
+  private final Set <AbstractJClass> m_aImportedClasses = new HashSet <AbstractJClass> ();
 
   /**
    * The current running mode. Set to PRINTING so that a casual client can use a
    * formatter just like before.
    */
-  private EMode _mode = EMode.PRINTING;
+  private EMode m_eMode = EMode.PRINTING;
 
   /**
    * Current number of indentation strings to print
    */
-  private int _indentLevel;
+  private int m_nIndentLevel;
 
   /**
    * String to be used for each indentation. Defaults to four spaces.
    */
-  private final String _indentSpace;
+  private final String m_sIndentSpace;
 
   /**
    * Stream associated with this JFormatter
    */
-  private final PrintWriter _pw;
+  private final PrintWriter m_aPW;
 
-  private char _lastChar = 0;
-  private boolean _atBeginningOfLine = true;
-  private JPackage _javaLang;
+  private char m_cLastChar = 0;
+  private boolean m_bAtBeginningOfLine = true;
+  private JPackage m_aPckJavaLang;
+
+  /**
+   * Only used by {@link JFormatter#containsErrorTypes(JDefinedClass)
+   * containsErrorTypes} method
+   */
+  private boolean m_bContainsErrorTypes;
 
   /**
    * Creates a JFormatter.
    *
    * @param aPW
-   *        PrintWriter to JFormatter to use.
-   * @param space
-   *        Incremental indentation string, similar to tab value.
+   *        {@link PrintWriter} to {@link JFormatter} to use. May not be
+   *        <code>null</code>.
+   * @param sIndentSpace
+   *        Incremental indentation string, similar to tab value. May not be
+   *        <code>null</code>.
    */
-  public JFormatter (@Nonnull final PrintWriter aPW, @Nonnull final String space)
+  public JFormatter (@Nonnull final PrintWriter aPW, @Nonnull final String sIndentSpace)
   {
-    _pw = aPW;
-    _indentSpace = space;
+    if (aPW == null)
+      throw new NullPointerException ("PrintWriter");
+    if (sIndentSpace == null)
+      throw new NullPointerException ("Indent space");
+
+    m_aPW = aPW;
+    m_sIndentSpace = sIndentSpace;
   }
 
   /**
@@ -140,15 +174,15 @@ public class JFormatter implements Closeable
    */
   public JFormatter (@Nonnull final PrintWriter aPW)
   {
-    this (aPW, "    ");
+    this (aPW, DEFAULT_INDENT_SPACE);
   }
 
   /**
    * Creates a formatter with default incremental indentations of four spaces.
    */
-  public JFormatter (@Nonnull final Writer w)
+  public JFormatter (@Nonnull final Writer aWriter)
   {
-    this (w instanceof PrintWriter ? (PrintWriter) w : new PrintWriter (w));
+    this (aWriter instanceof PrintWriter ? (PrintWriter) aWriter : new PrintWriter (aWriter));
   }
 
   /**
@@ -156,7 +190,7 @@ public class JFormatter implements Closeable
    */
   public void close ()
   {
-    _pw.close ();
+    m_aPW.close ();
   }
 
   /**
@@ -165,7 +199,7 @@ public class JFormatter implements Closeable
    */
   public boolean isPrinting ()
   {
-    return _mode == EMode.PRINTING;
+    return m_eMode == EMode.PRINTING;
   }
 
   /**
@@ -174,7 +208,7 @@ public class JFormatter implements Closeable
   @Nonnull
   public JFormatter outdent ()
   {
-    _indentLevel--;
+    m_nIndentLevel--;
     return this;
   }
 
@@ -184,11 +218,11 @@ public class JFormatter implements Closeable
   @Nonnull
   public JFormatter indent ()
   {
-    _indentLevel++;
+    m_nIndentLevel++;
     return this;
   }
 
-  private boolean _needSpace (final char c1, final char c2)
+  private static boolean _needSpace (final char c1, final char c2)
   {
     if ((c1 == ']') && (c2 == '{'))
       return true;
@@ -255,15 +289,15 @@ public class JFormatter implements Closeable
 
   private void _spaceIfNeeded (final char c)
   {
-    if (_atBeginningOfLine)
+    if (m_bAtBeginningOfLine)
     {
-      for (int i = 0; i < _indentLevel; i++)
-        _pw.print (_indentSpace);
-      _atBeginningOfLine = false;
+      for (int i = 0; i < m_nIndentLevel; i++)
+        m_aPW.print (m_sIndentSpace);
+      m_bAtBeginningOfLine = false;
     }
     else
-      if ((_lastChar != 0) && _needSpace (_lastChar, c))
-        _pw.print (' ');
+      if ((m_cLastChar != 0) && _needSpace (m_cLastChar, c))
+        m_aPW.print (' ');
   }
 
   /**
@@ -276,18 +310,18 @@ public class JFormatter implements Closeable
   @Nonnull
   public JFormatter print (final char c)
   {
-    if (_mode == EMode.PRINTING)
+    if (m_eMode == EMode.PRINTING)
     {
       if (c == CLOSE_TYPE_ARGS)
       {
-        _pw.print ('>');
+        m_aPW.print ('>');
       }
       else
       {
         _spaceIfNeeded (c);
-        _pw.print (c);
+        m_aPW.print (c);
       }
-      _lastChar = c;
+      m_cLastChar = c;
     }
     return this;
   }
@@ -302,21 +336,21 @@ public class JFormatter implements Closeable
   @Nonnull
   public JFormatter print (@Nonnull final String s)
   {
-    if (_mode == EMode.PRINTING && s.length () > 0)
+    if (m_eMode == EMode.PRINTING && s.length () > 0)
     {
       _spaceIfNeeded (s.charAt (0));
-      _pw.print (s);
-      _lastChar = s.charAt (s.length () - 1);
+      m_aPW.print (s);
+      m_cLastChar = s.charAt (s.length () - 1);
     }
     return this;
   }
 
   @Nonnull
-  public JFormatter type (@Nonnull final AbstractJType type)
+  public JFormatter type (@Nonnull final AbstractJType aType)
   {
-    if (type.isReference ())
-      return type ((AbstractJClass) type);
-    return generable (type);
+    if (aType.isReference ())
+      return type ((AbstractJClass) aType);
+    return generable (aType);
   }
 
   /**
@@ -326,39 +360,43 @@ public class JFormatter implements Closeable
    * import and what not to.
    */
   @Nonnull
-  public JFormatter type (@Nonnull final AbstractJClass type)
+  public JFormatter type (@Nonnull final AbstractJClass aType)
   {
-    switch (_mode)
+    switch (m_eMode)
     {
+      case FIND_ERROR_TYPES:
+        if (aType.isError ())
+          m_bContainsErrorTypes = true;
+        break;
       case PRINTING:
         // many of the JTypes in this list are either primitive or belong to
         // package java so we don't need a FQCN
-        if (_importedClasses.contains (type) || type._package () == _javaLang)
+        if (m_aImportedClasses.contains (aType) || aType._package () == m_aPckJavaLang)
         {
           // FQCN imported or not necessary, so generate short name
-          print (type.name ());
+          print (aType.name ());
         }
         else
         {
-          final AbstractJClass aOuterClass = type.outer ();
+          final AbstractJClass aOuterClass = aType.outer ();
           if (aOuterClass != null)
-            type (aOuterClass).print ('.').print (type.name ());
+            type (aOuterClass).print ('.').print (aType.name ());
           else
           {
             // collision was detected, so generate FQCN
-            print (type.fullName ());
+            print (aType.fullName ());
           }
         }
         break;
       case COLLECTING:
-        final String shortName = type.name ();
-        Usages usage = _collectedReferences.get (shortName);
+        final String shortName = aType.name ();
+        Usages usage = m_aCollectedReferences.get (shortName);
         if (usage == null)
         {
           usage = new Usages ();
-          _collectedReferences.put (shortName, usage);
+          m_aCollectedReferences.put (shortName, usage);
         }
-        usage.addReferencedType (type);
+        usage.addReferencedType (aType);
         break;
     }
     return this;
@@ -370,20 +408,20 @@ public class JFormatter implements Closeable
   @Nonnull
   public JFormatter id (@Nonnull final String id)
   {
-    switch (_mode)
+    switch (m_eMode)
     {
       case PRINTING:
         print (id);
         break;
       case COLLECTING:
         // see if there is a type name that collides with this id
-        Usages usage = _collectedReferences.get (id);
+        Usages usage = m_aCollectedReferences.get (id);
         if (usage == null)
         {
           // not a type, but we need to create a place holder to
           // see if there might be a collision with a type
           usage = new Usages ();
-          _collectedReferences.put (id, usage);
+          m_aCollectedReferences.put (id, usage);
         }
         usage.setVariableName ();
         break;
@@ -397,11 +435,11 @@ public class JFormatter implements Closeable
   @Nonnull
   public JFormatter newline ()
   {
-    if (_mode == EMode.PRINTING)
+    if (m_eMode == EMode.PRINTING)
     {
-      _pw.println ();
-      _lastChar = 0;
-      _atBeginningOfLine = true;
+      m_aPW.println ();
+      m_cLastChar = 0;
+      m_bAtBeginningOfLine = true;
     }
     return this;
   }
@@ -483,22 +521,22 @@ public class JFormatter implements Closeable
    */
   void write (@Nonnull final JDefinedClass c)
   {
-    _javaLang = c.owner ()._package ("java.lang");
+    m_aPckJavaLang = c.owner ()._package ("java.lang");
 
     // first collect all the types and identifiers
-    _mode = EMode.COLLECTING;
+    m_eMode = EMode.COLLECTING;
     declaration (c);
 
     // collate type names and identifiers to determine which types can be
     // imported
-    for (final Usages usage : _collectedReferences.values ())
+    for (final Usages usage : m_aCollectedReferences.values ())
     {
       if (!usage.isAmbiguousIn (c) && !usage.isVariableName ())
       {
         final AbstractJClass reference = usage.getSingleReferencedType ();
 
         if (_shouldBeImported (reference, c))
-          _importedClasses.add (reference);
+          m_aImportedClasses.add (reference);
         else
         {
           _importOuterClassIfCausesNoAmbiguities (reference, c);
@@ -514,10 +552,10 @@ public class JFormatter implements Closeable
     }
 
     // the class itself that we will be generating is always accessible
-    _importedClasses.add (c);
+    m_aImportedClasses.add (c);
 
     // then print the declaration
-    _mode = EMode.PRINTING;
+    m_eMode = EMode.PRINTING;
 
     assert c.parentContainer ().isPackage () : "this method is only for a pacakge-level class";
     final JPackage pkg = (JPackage) c.parentContainer ();
@@ -528,7 +566,7 @@ public class JFormatter implements Closeable
     }
 
     // generate import statements
-    final AbstractJClass [] imports = _importedClasses.toArray (new AbstractJClass [_importedClasses.size ()]);
+    final AbstractJClass [] imports = m_aImportedClasses.toArray (new AbstractJClass [m_aImportedClasses.size ()]);
     Arrays.sort (imports, ClassNameComparator.getInstance ());
     boolean bAnyImport = false;
     for (AbstractJClass clazz : imports)
@@ -627,7 +665,7 @@ public class JFormatter implements Closeable
     if (aPackage.isUnnamed ())
       return true;
 
-    if (aPackage == _javaLang)
+    if (aPackage == m_aPckJavaLang)
     {
       // no need to explicitly import java.lang classes
       return true;
@@ -679,7 +717,7 @@ public class JFormatter implements Closeable
     if (outer != null)
     {
       if (_causesNoAmbiguities (outer, clazz) && _shouldBeImported (outer, clazz))
-        _importedClasses.add (outer);
+        m_aImportedClasses.add (outer);
       else
         _importOuterClassIfCausesNoAmbiguities (outer, clazz);
     }
@@ -687,7 +725,7 @@ public class JFormatter implements Closeable
 
   private boolean _causesNoAmbiguities (@Nonnull final AbstractJClass reference, @Nonnull final JDefinedClass clazz)
   {
-    final Usages usage = _collectedReferences.get (reference.name ());
+    final Usages usage = m_aCollectedReferences.get (reference.name ());
     return usage == null || (!usage.isAmbiguousIn (clazz) && usage.containsReferencedType (reference));
   }
 
@@ -730,7 +768,7 @@ public class JFormatter implements Closeable
 
       // special case where a generated type collides with a type in package
       // java.lang
-      if (singleRef._package () == JFormatter.this._javaLang)
+      if (singleRef._package () == JFormatter.this.m_aPckJavaLang)
       {
         // make sure that there's no other class with this name within the
         // same package

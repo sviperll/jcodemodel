@@ -38,50 +38,34 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package com.helger.jcodemodel.tests;
-
-import static org.junit.Assert.assertEquals;
+package com.helger.jcodemodel;
 
 import org.junit.Test;
 
-import com.helger.jcodemodel.JAtomDouble;
-import com.helger.jcodemodel.JAtomFloat;
+import com.helger.jcodemodel.JCodeModel;
+import com.helger.jcodemodel.JDefinedClass;
 import com.helger.jcodemodel.JExpr;
-import com.helger.jcodemodel.tests.util.CodeModelTestsUtils;
+import com.helger.jcodemodel.JFieldVar;
+import com.helger.jcodemodel.JMethod;
+import com.helger.jcodemodel.JMod;
+import com.helger.jcodemodel.writer.SingleStreamCodeWriter;
 
-/**
- * JExpr tests.
- */
-public class JExprTest
+public class JFieldRefTest
 {
-  /**
-   * Tests double literal expression.
-   */
   @Test
-  public void testLitDouble () throws Exception
+  public void main () throws Exception
   {
-    assertEquals (JAtomDouble.JAVA_LANG_DOUBLE_POSITIVE_INFINITY,
-                  CodeModelTestsUtils.toString (JExpr.lit (Double.POSITIVE_INFINITY)));
-    assertEquals (JAtomDouble.JAVA_LANG_DOUBLE_NEGATIVE_INFINITY,
-                  CodeModelTestsUtils.toString (JExpr.lit (Double.NEGATIVE_INFINITY)));
-    assertEquals (JAtomDouble.JAVA_LANG_DOUBLE_NAN, CodeModelTestsUtils.toString (JExpr.lit (Double.NaN)));
-  }
+    final JCodeModel cm = new JCodeModel ();
 
-  @Test
-  public void testLitFloat () throws Exception
-  {
-    assertEquals (JAtomFloat.JAVA_LANG_FLOAT_POSITIVE_INFINITY,
-                  CodeModelTestsUtils.toString (JExpr.lit (Float.POSITIVE_INFINITY)));
-    assertEquals (JAtomFloat.JAVA_LANG_FLOAT_NEGATIVE_INFINITY,
-                  CodeModelTestsUtils.toString (JExpr.lit (Float.NEGATIVE_INFINITY)));
-    assertEquals (JAtomFloat.JAVA_LANG_FLOAT_NAN, CodeModelTestsUtils.toString (JExpr.lit (Float.NaN)));
-  }
+    final JDefinedClass cls = cm._class (JMod.FINAL, "Test");
+    final JFieldVar f1 = cls.field (JMod.PRIVATE, cm.ref (Integer.class), "field");
+    final JFieldVar f2 = cls.field (JMod.PRIVATE, cm.ref (String.class), "field2");
+    final JMethod m = cls.method (JMod.PUBLIC, cm.VOID, "foo");
+    m.body ().add (JExpr.ref (f1).assign (5));
+    m.body ().add (JExpr.ref (f2).assign ("Test"));
+    m.body ().add (JExpr.refthis (f1).assign (6));
+    m.body ().add (JExpr.refthis (f2).assign ("Call"));
 
-  @Test
-  public void testLitIntAndLong () throws Exception
-  {
-    assertEquals ("5", CodeModelTestsUtils.toString (JExpr.lit (5)));
-    assertEquals ("5L", CodeModelTestsUtils.toString (JExpr.lit (5l)));
-    assertEquals ("5L", CodeModelTestsUtils.toString (JExpr.lit ((long) 5)));
+    cm.build (new SingleStreamCodeWriter (System.out));
   }
 }

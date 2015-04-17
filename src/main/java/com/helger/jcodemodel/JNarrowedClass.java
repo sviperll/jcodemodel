@@ -128,6 +128,7 @@ public class JNarrowedClass extends AbstractJClass
   }
 
   @Override
+  @Nonnull
   public String fullName ()
   {
     final StringBuilder buf = new StringBuilder ();
@@ -252,6 +253,19 @@ public class JNarrowedClass extends AbstractJClass
   @Override
   public boolean isArray ()
   {
+    return false;
+  }
+
+  @Override
+  public boolean isError ()
+  {
+    if (_basis.isError ())
+      return true;
+    for (final AbstractJClass aClass : _args)
+    {
+      if (aClass.isError ())
+        return true;
+    }
     return false;
   }
 
